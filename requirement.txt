@@ -1,0 +1,4 @@
+pandas
+llama-index
+llama-index-llms-openai
+llama-index-embeddings-huggingface
