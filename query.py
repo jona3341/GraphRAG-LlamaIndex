@@ -6,26 +6,28 @@ from llama_index.core import (
     load_index_from_storage
 )
 
-# Import des modules locaux
+# Import local modules
 from src.config import init_settings
+# Note: This imports the prompt we defined in src/prompts.py
+# (which might be the Chinese one or English one depending on your last edit)
 from src.prompts import CUSTOM_CHAT_PROMPT
 
-# Dossier de la base de données
+# Directory where the database is stored
 PERSIST_DIR = "./storage_graph_csv"
 
 def start_chat():
-    # 1. Chargement de l'environnement et de la clé API
+    # 1. Load Environment Variables & API Key
     load_dotenv()
     api_key = os.getenv("DEEPSEEK_API_KEY")
     
-    # 2. Initialisation des modèles (DeepSeek + BGE-M3)
+    # 2. Initialize Models (DeepSeek + BGE-M3)
     try:
         init_settings(api_key)
     except Exception as e:
         print(f"[ERROR] Configuration failed: {e}")
         return
 
-    # 3. Vérification de la présence de la base de données
+    # 3. Check if the database exists
     if not os.path.exists(PERSIST_DIR):
         print(f"\n[ERROR] The folder '{PERSIST_DIR}' does not exist.")
         print(">> Please run 'python index.py' first to build the database.")
@@ -39,39 +41,119 @@ def start_chat():
         print(f"[ERROR] Could not load index: {e}")
         return
 
-    # 4. Création du moteur de recherche (CORRECTION ICI)
-    # On passe en mode "compact" pour respecter strictement le Prompt "Role"
+    # 4. Create Query Engine
+    # We use 'compact' mode to pass retrieved context directly to the LLM
+    # adhering strictly to the 'Role' defined in src/prompts.py
     query_engine = index.as_query_engine(
         include_text=True,
-        response_mode="compact",  # <--- CHANGEMENT CLE : "compact" au lieu de "tree_summarize"
-        similarity_top_k=5,       # On récupère 5 livres potentiels pour laisser du choix au LLM
-        text_qa_template=CUSTOM_CHAT_PROMPT, # On applique ton Prompt strict
-        verbose=True              # Affiche les étapes dans la console
+        response_mode="compact",  
+        similarity_top_k=5,       # Retrieve top 5 matches
+        text_qa_template=CUSTOM_CHAT_PROMPT, # Apply strict prompt rules
+        verbose=True              # Show internal reasoning in console
     )
 
-    # 5. Boucle de discussion
+    # 5. Chat Loop
     print("\n" + "="*40)
-    print("  SYSTEME DE RECOMMANDATION (Format Strict)")
-    print("  Tapez 'exit' pour quitter.")
+    print("  BOOK RECOMMENDATION SYSTEM")
+    print("  Type 'exit', 'quit' or 'q' to stop.")
     print("="*40 + "\n")
 
     while True:
-        user_input = input("Votre demande : ")
+        user_input = input("Your Query: ")
         if user_input.lower() in ["exit", "quit", "q"]:
-            print("Au revoir !")
+            print("Goodbye!")
             break
         
         if not user_input.strip():
             continue
 
-        print("\n[AI] Reflexion en cours...\n")
+        print("\n[AI] Thinking...\n")
         try:
             response = query_engine.query(user_input)
-            # Affichage de la réponse finale
-            print(f"RÉPONSE :\n{response}\n")
+            # Display Final Response
+            print(f"RESPONSE:\n{response}\n")
             print("-" * 40)
         except Exception as e:
-            print(f"Erreur lors de la réponse : {e}")
+            print(f"Error during query: {e}")
+
+if __name__ == "__main__":
+    start_chat()import os
+import sys
+from dotenv import load_dotenv
+from llama_index.core import (
+    StorageContext,
+    load_index_from_storage
+)
+
+# Import local modules
+from src.config import init_settings
+# Note: This imports the prompt we defined in src/prompts.py
+# (which might be the Chinese one or English one depending on your last edit)
+from src.prompts import CUSTOM_CHAT_PROMPT
+
+# Directory where the database is stored
+PERSIST_DIR = "./storage_graph_csv"
+
+def start_chat():
+    # 1. Load Environment Variables & API Key
+    load_dotenv()
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    
+    # 2. Initialize Models (DeepSeek + BGE-M3)
+    try:
+        init_settings(api_key)
+    except Exception as e:
+        print(f"[ERROR] Configuration failed: {e}")
+        return
+
+    # 3. Check if the database exists
+    if not os.path.exists(PERSIST_DIR):
+        print(f"\n[ERROR] The folder '{PERSIST_DIR}' does not exist.")
+        print(">> Please run 'python index.py' first to build the database.")
+        return
+
+    print(f"\n>> [SYSTEM] Loading graph from disk '{PERSIST_DIR}'...")
+    try:
+        storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR)
+        index = load_index_from_storage(storage_context)
+    except Exception as e:
+        print(f"[ERROR] Could not load index: {e}")
+        return
+
+    # 4. Create Query Engine
+    # We use 'compact' mode to pass retrieved context directly to the LLM
+    # adhering strictly to the 'Role' defined in src/prompts.py
+    query_engine = index.as_query_engine(
+        include_text=True,
+        response_mode="compact",  
+        similarity_top_k=5,       # Retrieve top 5 matches
+        text_qa_template=CUSTOM_CHAT_PROMPT, # Apply strict prompt rules
+        verbose=True              # Show internal reasoning in console
+    )
+
+    # 5. Chat Loop
+    print("\n" + "="*40)
+    print("  BOOK RECOMMENDATION SYSTEM")
+    print("  Type 'exit', 'quit' or 'q' to stop.")
+    print("="*40 + "\n")
+
+    while True:
+        user_input = input("Your Query: ")
+        if user_input.lower() in ["exit", "quit", "q"]:
+            print("Goodbye!")
+            break
+        
+        if not user_input.strip():
+            continue
+
+        print("\n[AI] Thinking...\n")
+        try:
+            response = query_engine.query(user_input)
+            # Display Final Response
+            print(f"RESPONSE:\n{response}\n")
+            print("-" * 40)
+        except Exception as e:
+            print(f"Error during query: {e}")
 
 if __name__ == "__main__":
     start_chat()
